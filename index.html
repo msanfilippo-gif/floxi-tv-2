@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floxi TV 2</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    color: #e0e0e0;
+    font-family: 'Outfit', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+  }
+
+  /* ═══ SIDEBAR (Desktop) ═══ */
+  .sidebar {
+    width: 320px;
+    background: linear-gradient(180deg, #111118 0%, #0a0a0f 100%);
+    border-right: 1px solid #1e1e2a;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 20px;
+    border-bottom: 1px solid #1e1e2a;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #00c853, #00e676);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: #000;
+    box-shadow: 0 0 20px rgba(0,200,83,.3);
+  }
+
+  .sidebar-header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    flex: 1;
+  }
+
+  .google-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #161620, #1a1a28);
+    border: 1px solid #1e1e2a;
+    transition: all .25s ease;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .google-btn:hover {
+    border-color: #4285F4;
+    transform: scale(1.08);
+    box-shadow: 0 0 16px rgba(66,133,244,.2);
+  }
+
+  .channels-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .channels-list::-webkit-scrollbar { width: 6px; }
+  .channels-list::-webkit-scrollbar-track { background: #0a0a0f; }
+  .channels-list::-webkit-scrollbar-thumb { background: #2a2a3a; border-radius: 3px; }
+  .channels-list::-webkit-scrollbar-thumb:hover { background: #3a3a4a; }
+
+  .channel-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    margin-bottom: 4px;
+    border-radius: 10px;
+    background: linear-gradient(145deg, #0f0f16, #13131a);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .channel-item:hover {
+    border-color: var(--accent);
+    background: linear-gradient(145deg, #161620, #1a1a28);
+    transform: translateX(4px);
+  }
+
+  .channel-item.active {
+    border-color: var(--accent);
+    background: linear-gradient(145deg, var(--accent-dark), var(--accent-darker));
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  .channel-number {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1a1a2e, #252540);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800;
+    color: #555;
+    flex-shrink: 0;
+    transition: all .2s ease;
+  }
+
+  .channel-item:hover .channel-number,
+  .channel-item.active .channel-number {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: #fff;
+  }
+
+  .channel-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .channel-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color .2s ease;
+  }
+
+  .channel-item:hover .channel-name,
+  .channel-item.active .channel-name {
+    color: #fff;
+  }
+
+  .channel-sub {
+    font-size: 10px;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  /* ═══ PLAYER AREA ═══ */
+  .player-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #000;
+    position: relative;
+  }
+
+  .player-header {
+    background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .menu-toggle {
+    display: none;
+    width: 40px; height: 40px;
+    background: rgba(0,200,83,.12);
+    border: 1px solid rgba(0,200,83,.3);
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .menu-toggle:hover { background: rgba(0,200,83,.2); }
+  .menu-toggle svg { width: 24px; height: 24px; stroke: #00e676; stroke-width: 2; }
+
+  .player-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ddd;
+    flex: 1;
+  }
+
+  .player-status {
+    font-size: 12px;
+    font-weight: 500;
+    color: #00c853;
+    letter-spacing: 1px;
+  }
+
+  .btn-retry {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    background: rgba(245,158,11,.12);
+    border: 1px solid rgba(245,158,11,.3);
+    border-radius: 10px;
+    padding: 8px 16px;
+    color: #fbbf24;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .btn-retry:hover { background: rgba(245,158,11,.2); }
+  .btn-retry svg { width: 16px; height: 16px; stroke: #fbbf24; stroke-width: 2; }
+
+  .player-container {
+    flex: 1;
+    position: relative;
+    background: #000;
+  }
+
+  .player-video {
+    width: 100%;
+    height: 100%;
+    background: #000;
+  }
+
+  .player-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: #000;
+  }
+
+  .placeholder-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #00c853, #00e676);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    color: #000;
+    box-shadow: 0 0 40px rgba(0,200,83,.4);
+  }
+
+  .placeholder-text {
+    font-size: 18px;
+    color: #555;
+    letter-spacing: .5px;
+  }
+
+  .player-loading {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: #000;
+    z-index: 5;
+  }
+
+  .loading-text {
+    font-size: 14px;
+    color: #555;
+    letter-spacing: 1px;
+  }
+
+  .scan-bar {
+    width: 60%;
+    max-width: 300px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00c853, transparent);
+    animation: scanAnim 1.5s linear infinite;
+  }
+
+  @keyframes scanAnim {
+    0% { transform: translateX(-60%); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: translateX(60%); opacity: 0; }
+  }
+
+  .links-panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 32px;
+    background: linear-gradient(145deg, #0a0a12, #111118);
+    z-index: 10;
+    overflow-y: auto;
+  }
+
+  .links-title {
+    font-size: 13px;
+    color: #555;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+    padding: 18px 24px;
+    background: linear-gradient(145deg, #161620, #1a1a28);
+    border: 1px solid #2a2a3a;
+    border-radius: 14px;
+    color: #ddd;
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all .25s ease;
+  }
+
+  .link-btn:hover {
+    border-color: #00c853;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0,200,83,.15);
+    color: #fff;
+  }
+
+  .link-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: #00c853;
+    stroke-width: 2;
+    flex-shrink: 0;
+  }
+
+  /* ═══ MOBILE ═══ */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      left: -100%;
+      top: 0;
+      bottom: 0;
+      width: 85%;
+      max-width: 320px;
+      z-index: 1000;
+      transition: left .3s ease;
+      box-shadow: 4px 0 30px rgba(0,0,0,.8);
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    .menu-toggle {
+      display: flex;
+    }
+
+    .player-area {
+      width: 100%;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
+  }
+
+  footer {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: #2a2a2a;
+    z-index: 20;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-icon">▶</div>
+    <h1>Floxi TV 2</h1>
+    <a href="https://www.google.com" target="_blank" rel="noopener noreferrer" class="google-btn" title="Buscar en Google">
+      <svg viewBox="0 0 48 48" width="24" height="24">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.04 24.04 0 0 0 0 21.56l7.98-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+    </a>
+  </div>
+  <div class="channels-list" id="channelsList"></div>
+</div>
+
+<!-- Sidebar Overlay (Mobile) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Player Area -->
+<div class="player-area">
+  <div class="player-header">
+    <button class="menu-toggle" id="menuToggle">
+      <svg viewBox="0 0 24 24" fill="none">
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    <span class="player-title" id="playerTitle">Seleccioná un canal</span>
+    <span class="player-status" id="playerStatus"></span>
+    <button class="btn-retry" id="btnRetry">
+      <svg viewBox="0 0 24 24" fill="none">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Reintentar
+    </button>
+  </div>
+
+  <div class="player-container">
+    <video class="player-video" id="hlsVideo" controls playsinline style="display:none;"></video>
+    <iframe class="player-video" id="ytIframe" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen style="display:none;"></iframe>
+    
+    <div class="player-placeholder" id="playerPlaceholder">
+      <div class="placeholder-icon">▶</div>
+      <div class="placeholder-text">Seleccioná un canal para comenzar</div>
+    </div>
+
+    <div class="player-loading" id="playerLoading">
+      <div class="loading-text" id="loadingText">SINTONIZANDO...</div>
+      <div class="scan-bar"></div>
+    </div>
+
+    <div class="links-panel" id="linksPanel"></div>
+  </div>
+</div>
+
+<footer>Floxi TV 2 · Plataforma ideada por Maxi Entertainment — Gracias a derechos de YouTube</footer>
+
+<script>
+  const channels = [
+    { name: 'TN',             sub: 'Todo Noticias',      url: 'https://www.youtube.com/watch?v=cb12KmMMDJA' },
+    { name: 'C5N',            sub: 'Noticias',            url: 'https://www.youtube.com/channel/UCFgk2Q2mVO1BklRQhSv6p0w/live' },
+    { name: 'Crónica TV',     sub: 'Noticias 24h',       iptv: 'CronicaTV.ar',  hlsType: true },
+    { name: 'Canal 26',       sub: 'Noticias',            url: 'https://www.youtube.com/watch?v=84ZsMIIabCE' },
+    { name: 'La Nación+',     sub: 'LN+',                url: 'https://www.youtube.com/channel/UCba3hpU7EFBSk817y9qZkiA/live' },
+    { name: 'TV Pública',     sub: 'Televisión Pública',  iptv: 'TVPublica.ar',  hlsType: true },
+    { name: 'América TV',     sub: 'Canal 2',             url: 'https://www.youtube.com/watch?v=zcWXboTnous' },
+    { name: 'A24',            sub: 'Noticias 24h',        url: 'https://www.youtube.com/watch?v=ArKbAx1K-2U' },
+    { name: 'El Trece',       sub: 'Canal 13',            iptv: 'ElTreceTV.ar',  hlsType: true },
+    { name: 'El Doce',        sub: 'Canal 12 Córdoba',    url: 'https://www.youtube.com/watch?v=nndzeKDSjuc' },
+    { name: 'Canal 7',        sub: 'Mendoza',             url: 'https://www.youtube.com/watch?v=Vh8xmLBJtR8' },
+    { name: 'TyC Sports',     sub: 'Deportes',            iptv: 'TyCSports.ar',  hlsType: true },
+    { name: 'DeporTV',        sub: 'Deportes ARG',        iptv: 'DeporTV.ar',  hlsType: true },
+    { name: 'Cine.AR',        sub: 'Cine Argentino',      iptv: 'CineAr.ar',  hlsType: true },
+    { name: 'Encuentro',      sub: 'Cultural',            iptv: 'Encuentro.ar',  hlsType: true },
+    { name: 'AR12',           sub: 'Tecnología',          url: 'https://www.youtube.com/watch?v=JrmCaXL5GZs' },
+    { name: 'RTVE 24h',       sub: 'Noticias España',     iptv: 'RTVE24Horas.es',  hlsType: true },
+    { name: 'RTVE La 1',      sub: 'TVE España',          iptv: 'La1.es',  hlsType: true },
+    { name: 'RTVE La 2',      sub: 'Cultura España',      iptv: 'La2.es',  hlsType: true },
+    { name: 'Telemadrid',     sub: 'Madrid',              url: 'https://www.youtube.com/watch?v=gpzmtVx3VgA' },
+    { name: 'Canal Sur',      sub: 'Andalucía',           iptv: 'CanalSur.es',  hlsType: true },
+    { name: 'Euronews',       sub: 'Noticias Europa',     iptv: 'EuronewsSpanish.int',  hlsType: true },
+    { name: 'DW Español',     sub: 'Noticias Alemania',   iptv: 'DWEspanol.de',  hlsType: true },
+    { name: 'France 24',      sub: 'Noticias Francia',    iptv: 'France24Spanish.fr',  hlsType: true },
+    { name: 'RT Español',     sub: 'Noticias Rusia',      iptv: 'RTEspanol.ru',  hlsType: true },
+    { name: 'CGTN Español',   sub: 'Noticias China',      iptv: 'CGTNSpanish.cn',  hlsType: true },
+    { name: 'ABC News',       sub: 'USA Noticias',        iptv: 'ABCNewsLive.us',  hlsType: true },
+    { name: 'CBS News',       sub: 'USA Noticias',        iptv: 'CBSNewsNewYork.us',  hlsType: true },
+    { name: 'TV Chile',       sub: 'Chile Público',       iptv: 'TVChile.cl',  hlsType: true },
+    { name: 'Señal Colombia', sub: 'Colombia Público',    iptv: 'SenalColombia.co',  hlsType: true },
+    { name: 'TV Perú',        sub: 'Perú Público',        iptv: 'TVPeru.pe',  hlsType: true },
+    { name: 'Azteca 7',       sub: 'México',              iptv: 'Azteca7.mx',  hlsType: true },
+    { name: 'Azteca Uno',     sub: 'México TV',           iptv: 'AztecaUno.mx',  hlsType: true },
+    { name: 'Tastemade',      sub: 'Cocina y Viajes',     iptv: 'Tastemade.us',  hlsType: true },
+    { name: 'RAI 1',          sub: 'Italia TV',           iptv: 'Rai1.it',  hlsType: true },
+    { name: 'CNN International', sub: 'World News',       iptv: 'CNNInternational.us',  hlsType: true },
+    { name: 'LUZU TV',        sub: 'Streaming ARG',       url: 'https://www.youtube.com/@luzutv/live' },
+    { name: 'El Chavo TV',    sub: 'Entretenimiento',     url: 'https://www.youtube.com/watch?v=fy_fYd3ZwPE' },
+    { name: 'QM Music',       sub: 'Música',              url: 'https://www.youtube.com/watch?v=vGNglKWqwcQ' },
+    { name: 'CNN Noticias',   sub: 'Noticias',            url: 'https://www.youtube.com/watch?v=Qr61waJ6AZg' },
+    { name: 'Fútbol Libre',   sub: 'Fútbol en vivo',      links: [
+        { label: 'Fútbol Libre 1', url: 'https://futbol-libre.su/' },
+        { label: 'Fútbol Libre TV', url: 'https://futbollibre-tv.com/' },
+        { label: 'Tarjeta Roja TV', url: 'https://tarjetarojatv.blog/index2.php' },
+        { label: 'Pelota Libre TV', url: 'https://pelotalibretv.su/' },
+        { label: 'Roja Directa', url: 'https://rojadirectaplay.com/' },
+      ]
+    },
+  ];
+
+  const colors = [
+    ['#00c853','#00e676'], ['#3b82f6','#60a5fa'], ['#f59e0b','#fbbf24'],
+    ['#10b981','#34d399'], ['#8b5cf6','#a78bfa'], ['#06b6d4','#22d3ee'],
+    ['#f97316','#fb923c'], ['#ec4899','#f472b6'], ['#84cc16','#a3e635'],
+    ['#14b8a6','#2dd4bf'], ['#f43f5e','#fb7185'], ['#a855f7','#c084fc'],
+    ['#eab308','#facc15'], ['#0ea5e9','#38bdf8'], ['#64748b','#94a3b8'],
+    ['#d946ef','#e879f9'], ['#ef4444','#f87171'], ['#22d3ee','#67e8f9'],
+    ['#fb923c','#fdba74'], ['#4ade80','#86efac'], ['#f43f5e','#fb7185'],
+    ['#06b6d4','#22d3ee'], ['#8b5cf6','#a78bfa'], ['#f59e0b','#fbbf24'],
+    ['#10b981','#34d399'], ['#ec4899','#f472b6'], ['#00c853','#00e676'],
+    ['#3b82f6','#60a5fa'], ['#84cc16','#a3e635'], ['#14b8a6','#2dd4bf'],
+    ['#a855f7','#c084fc'], ['#eab308','#facc15'], ['#0ea5e9','#38bdf8'],
+    ['#d946ef','#e879f9'], ['#ef4444','#f87171'], ['#22d3ee','#67e8f9'],
+    ['#64748b','#94a3b8'], ['#fb923c','#fdba74'], ['#4ade80','#86efac'],
+    ['#f97316','#fb923c'], ['#06b6d4','#22d3ee'],
+  ];
+
+  // DOM refs
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  const menuToggle = document.getElementById('menuToggle');
+  const channelsList = document.getElementById('channelsList');
+  const hlsVideo = document.getElementById('hlsVideo');
+  const ytIframe = document.getElementById('ytIframe');
+  const playerTitle = document.getElementById('playerTitle');
+  const playerStatus = document.getElementById('playerStatus');
+  const playerPlaceholder = document.getElementById('playerPlaceholder');
+  const playerLoading = document.getElementById('playerLoading');
+  const loadingText = document.getElementById('loadingText');
+  const linksPanel = document.getElementById('linksPanel');
+  const btnRetry = document.getElementById('btnRetry');
+
+  let currentHls = null;
+  let streamsCache = null;
+  let currentChannel = null;
+  let availableStreams = [];
+  let currentStreamIdx = 0;
+  let activeChannelEl = null;
+
+  // Preload streams cache for faster channel switching
+  fetch('https://iptv-org.github.io/api/streams.json')
+    .then(res => res.json())
+    .then(data => { streamsCache = data; })
+    .catch(() => {});
+
+  // Render channel list
+  channels.forEach((ch, i) => {
+    const [accent, light] = colors[i % colors.length];
+    const accentDark = accent.replace(/[^,]+\)/, prev => {
+      const match = prev.match(/(\d+)/g);
+      return match ? `${Math.max(0, parseInt(match[0])-30)},${Math.max(0, parseInt(match[1])-30)},${Math.max(0, parseInt(match[2])-30)})` : prev;
+    });
+    
+    const item = document.createElement('div');
+    item.className = 'channel-item';
+    item.style.setProperty('--accent', accent);
+    item.style.setProperty('--accent-light', light);
+    item.style.setProperty('--accent-dark', accentDark.replace(')', ',0.15)').replace('#', 'rgba(').replace(/(.{2})(.{2})(.{2})/, '$1,$2,$3'));
+    item.style.setProperty('--accent-darker', accentDark.replace(')', ',0.08)').replace('#', 'rgba(').replace(/(.{2})(.{2})(.{2})/, '$1,$2,$3'));
+    item.innerHTML = `
+      <div class="channel-number">${String(i + 1).padStart(2, '0')}</div>
+      <div class="channel-info">
+        <div class="channel-name">${ch.name}</div>
+        <div class="channel-sub">${ch.sub}</div>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      playChannel(ch, item);
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+    channelsList.appendChild(item);
+  });
+
+  // Mobile menu
+  menuToggle.addEventListener('click', () => {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('active');
+  });
+
+  sidebarOverlay.addEventListener('click', closeSidebar);
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('active');
+  }
+
+  // Play channel
+  async function playChannel(ch, itemEl) {
+    if (activeChannelEl) activeChannelEl.classList.remove('active');
+    activeChannelEl = itemEl;
+    itemEl.classList.add('active');
+
+    currentChannel = ch;
+    playerTitle.textContent = ch.name;
+    playerPlaceholder.style.display = 'none';
+    btnRetry.style.display = 'none';
+
+    if (ch.links) {
+      showLinksPanel(ch);
+    } else if (ch.hlsType) {
+      await loadHlsChannel(ch);
+    } else {
+      // YouTube opens in new tab
+      window.open(ch.url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
+  function showLinksPanel(ch) {
+    playerStatus.textContent = 'ELEGÍ UN ENLACE';
+    playerLoading.style.display = 'none';
+    hlsVideo.style.display = 'none';
+    ytIframe.style.display = 'none';
+    linksPanel.innerHTML = `
+      <div class="links-title">Elegí una opción para ver</div>
+      ${ch.links.map(lnk => `
+        <a class="link-btn" href="${lnk.url}" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          ${lnk.label}
+        </a>
+      `).join('')}
+    `;
+    linksPanel.style.display = 'flex';
+  }
+
+  function loadYouTubeChannel(ch) {
+    playerStatus.textContent = '● YOUTUBE LIVE';
+    playerLoading.style.display = 'flex';
+    loadingText.textContent = 'CARGANDO YOUTUBE...';
+    hlsVideo.style.display = 'none';
+    linksPanel.style.display = 'none';
+    ytIframe.style.display = 'none';
+
+    let fallbackTriggered = false;
+
+    const triggerFallback = () => {
+      if (fallbackTriggered) return;
+      fallbackTriggered = true;
+      
+      playerLoading.style.display = 'none';
+      ytIframe.style.display = 'none';
+      ytIframe.src = 'about:blank';
+      playerPlaceholder.style.display = 'flex';
+      playerStatus.textContent = 'ABRIENDO EN PESTAÑA NUEVA';
+      
+      window.open(ch.url, '_blank', 'noopener,noreferrer');
+      
+      const placeholderText = playerPlaceholder.querySelector('.placeholder-text');
+      placeholderText.textContent = '🔗 Este canal se abrió en una pestaña nueva';
+      setTimeout(() => {
+        placeholderText.textContent = 'Seleccioná un canal para comenzar';
+        playerStatus.textContent = '';
+      }, 4000);
+    };
+
+    // Try to embed first
+    const embedUrl = buildYouTubeEmbed(ch.url);
+    
+    // Fallback after 2 seconds if nothing happens
+    const fallbackTimer = setTimeout(triggerFallback, 2000);
+
+    ytIframe.onload = () => {
+      // Give iframe 1 more second to show content or error
+      setTimeout(() => {
+        if (!fallbackTriggered) {
+          clearTimeout(fallbackTimer);
+          playerLoading.style.display = 'none';
+          ytIframe.style.display = 'block';
+        }
+      }, 1000);
+    };
+
+    ytIframe.onerror = () => {
+      clearTimeout(fallbackTimer);
+      triggerFallback();
+    };
+
+    ytIframe.src = embedUrl;
+  }
+
+  function buildYouTubeEmbed(url) {
+    let m = url.match(/[?&]v=([^&]+)/);
+    if (m) return `https://www.youtube.com/embed/${m[1]}?autoplay=1`;
+    m = url.match(/youtube\.com\/channel\/([^/]+)\/live/);
+    if (m) return `https://www.youtube.com/embed/live_stream?channel=${m[1]}&autoplay=1`;
+    m = url.match(/youtube\.com\/@([^/]+)\/live/);
+    if (m) return `https://www.youtube.com/embed/live_stream?channel=${m[1]}&autoplay=1`;
+    return url;
+  }
+
+  async function loadHlsChannel(ch) {
+    playerStatus.textContent = 'BUSCANDO SEÑAL...';
+    loadingText.textContent = 'BUSCANDO SEÑAL...';
+    playerLoading.style.display = 'flex';
+    hlsVideo.style.display = 'none';
+    ytIframe.style.display = 'none';
+    linksPanel.style.display = 'none';
+
+    try {
+      availableStreams = await findAllStreams(ch.iptv);
+      if (!availableStreams.length) {
+        playerStatus.textContent = 'SEÑAL NO DISPONIBLE';
+        loadingText.textContent = 'No se encontró ninguna señal disponible.';
+        btnRetry.style.display = 'flex';
+        return;
+      }
+      currentStreamIdx = 0;
+      tryNextStream();
+    } catch (err) {
+      playerStatus.textContent = 'ERROR DE CONEXIÓN';
+      loadingText.textContent = 'No se pudo contactar al servidor de señales.';
+      btnRetry.style.display = 'flex';
+    }
+  }
+
+  async function findAllStreams(channelId) {
+    if (!streamsCache) {
+      const res = await fetch('https://iptv-org.github.io/api/streams.json');
+      streamsCache = await res.json();
+    }
+    return streamsCache
+      .filter(s => s.channel === channelId && s.url && !s.referrer && !s.user_agent)
+      .map(s => s.url);
+  }
+
+  function tryNextStream() {
+    if (currentStreamIdx >= availableStreams.length) {
+      playerStatus.textContent = 'NO SE PUDO CONECTAR';
+      loadingText.textContent = `Ninguna de las ${availableStreams.length} señales funciona en este momento.`;
+      playerLoading.style.display = 'flex';
+      hlsVideo.style.display = 'none';
+      btnRetry.style.display = 'flex';
+      return;
+    }
+
+    const url = availableStreams[currentStreamIdx];
+    const total = availableStreams.length;
+    const num = currentStreamIdx + 1;
+
+    playerStatus.textContent = `PROBANDO ${num}/${total}...`;
+    loadingText.textContent = `Conectando con señal ${num} de ${total}...`;
+    playerLoading.style.display = 'flex';
+    hlsVideo.style.display = 'block';
+
+    playHls(url);
+  }
+
+  function playHls(url) {
+    if (currentHls) { try { currentHls.destroy(); } catch {} currentHls = null; }
+    hlsVideo.removeAttribute('src');
+    hlsVideo.load();
+
+    let connected = false;
+    const fallbackTimer = setTimeout(() => {
+      if (!connected) {
+        currentStreamIdx++;
+        tryNextStream();
+      }
+    }, 5000); // Reduced from 8s to 5s
+
+    if (Hls.isSupported() && /\.m3u8($|\?)/i.test(url)) {
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true, // Changed to true for faster connection
+        manifestLoadingTimeOut: 4000, // Reduced from 6000
+        manifestLoadingMaxRetry: 1,
+        levelLoadingTimeOut: 4000, // Reduced from 6000
+        fragLoadingTimeOut: 5000, // Reduced from 8000
+        maxBufferLength: 10, // Reduced buffer for faster start
+        maxMaxBufferLength: 20,
+      });
+      hls.loadSource(url);
+      hls.attachMedia(hlsVideo);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        connected = true;
+        clearTimeout(fallbackTimer);
+        playerLoading.style.display = 'none';
+        playerStatus.textContent = '● EN VIVO';
+        hlsVideo.play().catch(() => {
+          playerStatus.textContent = 'LISTO — PULSÁ ▶';
+        });
+      });
+
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (data.fatal) {
+          clearTimeout(fallbackTimer);
+          if (!connected) {
+            currentStreamIdx++;
+            tryNextStream();
+          } else {
+            playerStatus.textContent = 'SEÑAL CAÍDA';
+            loadingText.textContent = 'La señal se interrumpió. Pulsá Reintentar.';
+            playerLoading.style.display = 'flex';
+            btnRetry.style.display = 'flex';
+          }
+        }
+      });
+      currentHls = hls;
+    } else if (hlsVideo.canPlayType('application/vnd.apple.mpegurl')) {
+      hlsVideo.src = url;
+      hlsVideo.addEventListener('loadedmetadata', () => {
+        connected = true;
+        clearTimeout(fallbackTimer);
+        playerLoading.style.display = 'none';
+        playerStatus.textContent = '● EN VIVO';
+      }, { once: true });
+      hlsVideo.addEventListener('error', () => {
+        if (!connected) {
+          clearTimeout(fallbackTimer);
+          currentStreamIdx++;
+          tryNextStream();
+        }
+      }, { once: true });
+      hlsVideo.play().catch(() => { playerStatus.textContent = 'LISTO — PULSÁ ▶'; });
+    } else {
+      clearTimeout(fallbackTimer);
+      currentStreamIdx++;
+      tryNextStream();
+    }
+  }
+
+  btnRetry.addEventListener('click', () => {
+    if (currentChannel && currentChannel.hlsType) {
+      streamsCache = null;
+      loadHlsChannel(currentChannel);
+    }
+  });
+</script>
+</body>
+</html>
