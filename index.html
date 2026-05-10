@@ -552,12 +552,6 @@
     }
   }
 
-  /* ═══ MOBILE (viejo) ═══ */
-  @media (max-width: 768px) {
-    body {
-      flex-direction: column;
-    }
-
   footer {
     position: absolute;
     bottom: 8px;
@@ -566,6 +560,45 @@
     color: #2a2a2a;
     z-index: 20;
     pointer-events: none;
+  }
+
+  /* ═══ RESPONSIVE - Solo móvil ═══ */
+  @media (max-width: 768px) {
+    .sidebar {
+      position: fixed;
+      left: -100%;
+      top: 0;
+      bottom: 0;
+      width: 85%;
+      max-width: 320px;
+      z-index: 1000;
+      transition: left .3s ease;
+      box-shadow: 4px 0 30px rgba(0,0,0,.8);
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    .menu-toggle {
+      display: flex;
+    }
+
+    .player-area {
+      width: 100%;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 999;
+    }
+
+    .sidebar-overlay.active {
+      display: block;
+    }
   }
 </style>
 </head>
@@ -636,19 +669,19 @@
   const channels = [
     { name: 'TN',             sub: 'Todo Noticias',      url: 'https://www.youtube.com/watch?v=cb12KmMMDJA' },
     { name: 'C5N',            sub: 'Noticias',            url: 'https://www.youtube.com/channel/UCFgk2Q2mVO1BklRQhSv6p0w/live' },
-    { name: 'Crónica TV',     sub: 'Noticias 24h',       iptv: 'CronicaTV.ar',  hlsType: true },
+    { name: 'Crónica TV',     sub: 'Noticias 24h',       url: 'https://www.youtube.com/channel/UCT7KFGv6s2a-rh2Jq8ZdM1g/live' },
     { name: 'Canal 26',       sub: 'Noticias',            url: 'https://www.youtube.com/watch?v=84ZsMIIabCE' },
     { name: 'La Nación+',     sub: 'LN+',                url: 'https://www.youtube.com/channel/UCba3hpU7EFBSk817y9qZkiA/live' },
-    { name: 'TV Pública',     sub: 'Televisión Pública',  iptv: 'TVPublica.ar',  hlsType: true },
+    { name: 'TV Pública',     sub: 'Televisión Pública',  iptv: 'PublicaTV',  hlsType: true },
     { name: 'América TV',     sub: 'Canal 2',             url: 'https://www.youtube.com/watch?v=zcWXboTnous' },
     { name: 'A24',            sub: 'Noticias 24h',        url: 'https://www.youtube.com/watch?v=ArKbAx1K-2U' },
-    { name: 'El Trece',       sub: 'Canal 13',            iptv: 'ElTreceTV.ar',  hlsType: true },
+    { name: 'El Trece',       sub: 'Canal 13',            iptv: 'ElTrece.ar', directUrls: ['https://live-01-02-eltrece.vodgc.net/eltrecetv/index.m3u8'], hlsType: true },
     { name: 'El Doce',        sub: 'Canal 12 Córdoba',    url: 'https://www.youtube.com/watch?v=nndzeKDSjuc' },
     { name: 'Canal 7',        sub: 'Mendoza',             url: 'https://www.youtube.com/watch?v=Vh8xmLBJtR8' },
-    { name: 'TyC Sports',     sub: 'Deportes',            iptv: 'TyCSports.ar',  hlsType: true },
-    { name: 'DeporTV',        sub: 'Deportes ARG',        iptv: 'DeporTV.ar',  hlsType: true },
-    { name: 'Cine.AR',        sub: 'Cine Argentino',      iptv: 'CineAr.ar',  hlsType: true },
-    { name: 'Encuentro',      sub: 'Cultural',            iptv: 'Encuentro.ar',  hlsType: true },
+    { name: 'TyC Sports',     sub: 'Deportes',            iptv: 'TyCSports.ar', directUrls: ['https://d3awnlgqz0szay.cloudfront.net/out/v1/b841c366cbe540e6a106c3ba83e5c8d6/index.m3u8'], hlsType: true },
+    { name: 'DeporTV',        sub: 'Deportes ARG',        iptv: 'DeporTV',  hlsType: true },
+    { name: 'Cine.AR',        sub: 'Cine Argentino',      iptv: 'CineAR',  hlsType: true },
+    { name: 'Encuentro',      sub: 'Cultural',            iptv: 'Encuentro',  hlsType: true },
     { name: 'AR12',           sub: 'Tecnología',          url: 'https://www.youtube.com/watch?v=JrmCaXL5GZs' },
     { name: 'RTVE 24h',       sub: 'Noticias España',     iptv: 'RTVE24Horas.es',  hlsType: true },
     { name: 'RTVE La 1',      sub: 'TVE España',          iptv: 'La1.es',  hlsType: true },
@@ -780,6 +813,16 @@
     playerTitle.textContent = ch.name;
     playerPlaceholder.style.display = 'none';
     btnRetry.style.display = 'none';
+    
+    // Stop any playing audio/video when switching channels
+    hlsVideo.pause();
+    hlsVideo.removeAttribute('src');
+    hlsVideo.load();
+    hlsVideo.style.display = 'none';
+    ytIframe.src = 'about:blank';
+    ytIframe.style.display = 'none';
+    linksPanel.style.display = 'none';
+    if (currentHls) { try { currentHls.destroy(); } catch {} currentHls = null; }
 
     if (ch.links) {
       showLinksPanel(ch);
@@ -887,6 +930,12 @@
 
     try {
       availableStreams = await findAllStreams(ch.iptv);
+      // Add direct URLs at the beginning (priority)
+      if (ch.directUrls && ch.directUrls.length) {
+        ch.directUrls.forEach(u => {
+          if (!availableStreams.includes(u)) availableStreams.unshift(u);
+        });
+      }
       if (!availableStreams.length) {
         playerStatus.textContent = 'SEÑAL NO DISPONIBLE';
         loadingText.textContent = 'No se encontró ninguna señal disponible.';
@@ -896,9 +945,16 @@
       currentStreamIdx = 0;
       tryNextStream();
     } catch (err) {
-      playerStatus.textContent = 'ERROR DE CONEXIÓN';
-      loadingText.textContent = 'No se pudo contactar al servidor de señales.';
-      btnRetry.style.display = 'flex';
+      // If API fails, try direct URLs
+      if (ch.directUrls && ch.directUrls.length) {
+        availableStreams = [...ch.directUrls];
+        currentStreamIdx = 0;
+        tryNextStream();
+      } else {
+        playerStatus.textContent = 'ERROR DE CONEXIÓN';
+        loadingText.textContent = 'No se pudo contactar al servidor de señales.';
+        btnRetry.style.display = 'flex';
+      }
     }
   }
 
@@ -914,6 +970,12 @@
 
   function tryNextStream() {
     if (currentStreamIdx >= availableStreams.length) {
+      // Stop audio completely
+      hlsVideo.pause();
+      hlsVideo.removeAttribute('src');
+      hlsVideo.load();
+      if (currentHls) { try { currentHls.destroy(); } catch {} currentHls = null; }
+      
       playerStatus.textContent = 'NO SE PUDO CONECTAR';
       loadingText.textContent = `Ninguna de las ${availableStreams.length} señales funciona en este momento.`;
       playerLoading.style.display = 'flex';
@@ -935,13 +997,24 @@
   }
 
   function playHls(url) {
-    if (currentHls) { try { currentHls.destroy(); } catch {} currentHls = null; }
+    if (currentHls) { 
+      try { 
+        currentHls.destroy(); 
+      } catch {} 
+      currentHls = null; 
+    }
+    
+    // Stop and reset video/audio completely
+    hlsVideo.pause();
     hlsVideo.removeAttribute('src');
     hlsVideo.load();
-
+    
     let connected = false;
     const fallbackTimer = setTimeout(() => {
       if (!connected) {
+        // Stop audio when failing
+        hlsVideo.pause();
+        hlsVideo.removeAttribute('src');
         currentStreamIdx++;
         tryNextStream();
       }
@@ -950,13 +1023,14 @@
     if (Hls.isSupported() && /\.m3u8($|\?)/i.test(url)) {
       const hls = new Hls({
         enableWorker: true,
-        lowLatencyMode: true, // Changed to true for faster connection
-        manifestLoadingTimeOut: 4000, // Reduced from 6000
-        manifestLoadingMaxRetry: 1,
-        levelLoadingTimeOut: 4000, // Reduced from 6000
-        fragLoadingTimeOut: 5000, // Reduced from 8000
-        maxBufferLength: 10, // Reduced buffer for faster start
-        maxMaxBufferLength: 20,
+        lowLatencyMode: true,
+        manifestLoadingTimeOut: 3500,
+        manifestLoadingMaxRetry: 3,
+        levelLoadingTimeOut: 3500,
+        fragLoadingTimeOut: 4000,
+        maxBufferLength: 5,
+        maxMaxBufferLength: 10,
+        defaultAudioCodec: 'mp4a.40.2',
       });
       hls.loadSource(url);
       hls.attachMedia(hlsVideo);
